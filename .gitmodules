@@ -1,3 +1,0 @@
-[submodule ".githooks/cache"]
-	path = .githooks/cache
-	url = https://github.com/sp-ricard-valverde/github-act-cache-server.git
