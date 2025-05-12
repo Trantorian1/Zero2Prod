@@ -1,0 +1,12 @@
+# Docker
+Dockerfile
+compose.yaml
+
+# Rust
+Makefile
+tests
+target
+
+# Git
+.github
+.githooks
