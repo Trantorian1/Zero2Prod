@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/github-workflow.json
+name: Task - Build nightly image
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: Image tag
+        required: true
+        type: string
+      image-file:
+        description: Dockerfile used to build the image
+        required: true
+        type: string
+      registry:
+        description: Container registry
+        default: ghcr.io
+        required: false
+        type: string
+
+jobs:
+  build-docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Tags
+        id: tag
+        run: |
+          IMAGE="${{ inputs.registry }}/${{ github.repository_owner }}/${{ inputs.image-name }}"
+          IMAGE=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
+          SHA=$(git rev-parse --short "$GITHUB_SHA")
+          NIGHTLY="$IMAGE:nightly"
+          NIGHTLY_SHA="$IMAGE:nightly-$SHA"
+
+          echo "nightly=$NIGHTLY" >> $GITHUB_OUTPUT
+          echo "nightly-sha=$NIGHTLY_SHA" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: |
+            ${{ steps.tag.outputs.nightly }}
+            ${{ steps.tag.outputs.nightly-sha }}
+          outputs: type=docker,dest=${{ runner.temp }}/${{ inputs.image-name }}.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # - name: Upload artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: ${{ inputs.image-name }}
+      #     path: ${{ runner.temp }}/${{ inputs.image-name }}.tar

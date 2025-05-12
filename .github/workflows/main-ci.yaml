@@ -10,8 +10,6 @@ on:
 
 env:
   RUST_VERSION: 1.85
-  NODE_VERSION: 22
-  REGISTRY: ghcr.io
 
 permissions:
   contents: read
@@ -49,4 +47,12 @@ jobs:
     uses: ./.github/workflows/task-test-cargo.yaml
     with:
       rust-version: ${{ needs.env-expose.outputs.rust-version }}
+    secrets: inherit
+
+  build-nightly:
+    needs: env-expose
+    uses: ./.github/workflows/task-build-nightly.yaml
+    with:
+      image-name: zero2prod
+      image-file: ./Dockerfile
     secrets: inherit
