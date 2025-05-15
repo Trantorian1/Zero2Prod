@@ -1,14 +1,14 @@
 mod common;
 
+use common::*;
+
 const HEADER: &str = "application/x-www-form-urlencoded";
 
 #[tokio::test]
-async fn subscriptions_200() {
-    let address = common::spawn();
-
-    let client = reqwest::Client::new();
-    let response = client
-        .post(format!("{address}/subscriptions"))
+#[rstest::rstest]
+async fn subscriptions_200(app: App) {
+    let response = app
+        .subscriptions()
         .header(reqwest::header::CONTENT_TYPE, HEADER)
         .form(&[("name", "Trantorian"), ("email", "trantorian@terminus.net")])
         .send()
@@ -24,9 +24,7 @@ async fn subscriptions_200() {
 #[case::missing_email(Some("Trantorian"), None)]
 #[case::missing_name(None, Some("trantorian@terminus.net"))]
 #[case::missing_all(None, None)]
-async fn subscriptions_400_missing_data(#[case] name: Option<&str>, #[case] email: Option<&str>) {
-    let address = common::spawn();
-
+async fn subscriptions_400_missing_data(app: App, #[case] name: Option<&str>, #[case] email: Option<&str>) {
     let mut form = std::collections::HashMap::new();
     if let Some(name) = name {
         form.insert("name", name);
@@ -35,9 +33,8 @@ async fn subscriptions_400_missing_data(#[case] name: Option<&str>, #[case] emai
         form.insert("email", email);
     }
 
-    let client = reqwest::Client::new();
-    let response = client
-        .post(format!("{address}/subscriptions"))
+    let response = app
+        .subscriptions()
         .header(reqwest::header::CONTENT_TYPE, HEADER)
         .form(&form)
         .send()

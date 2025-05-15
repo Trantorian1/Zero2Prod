@@ -1,4 +1,4 @@
-FROM clux/muslrust:1.85.0-stable AS base
+FROM clux/muslrust:1.85.1-stable AS base
 WORKDIR /app
 
 # Note that we do not install cargo chef and sccache through cargo to avoid
@@ -15,6 +15,11 @@ ENV RUSTC_WRAPPER=/bin/sccache
 RUN apt-get update -y  && apt-get install -y wget
 RUN wget $SCCACHE_URL && tar -xvpf $SCCACHE_TAR && mv $SCCACHE $SCCACHE_BIN && mkdir sccache
 RUN wget $CHEF_URL && tar -xvpf $CHEF_TAR && mv cargo-chef /bin
+
+# Force `rustup` to sync the toolchain in the base `chef` layer so that it 
+# doesn't happen more than once
+COPY rust-toolchain.toml .
+RUN rustup show active-toolchain
 
 # Step 1: cache dependencies
 FROM base AS planner

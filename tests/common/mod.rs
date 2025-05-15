@@ -1,9 +1,37 @@
-pub fn spawn() -> String {
-    let listener = std::net::TcpListener::bind("localhost:0").expect("Failed to bind port");
-    let port = listener.local_addr().unwrap().port();
-    let server = zero2prod::run(listener).expect("Failed to listen to port");
+use testcontainers::{core::ports::IntoContainerPort as _, runners::SyncRunner};
 
-    let _ = tokio::spawn(server);
+pub struct App {
+    _container: testcontainers::Container<testcontainers::GenericImage>,
+    address: String,
+    client: reqwest::Client,
+}
 
-    format!("http://localhost:{port}")
+impl App {
+    fn new(container: testcontainers::Container<testcontainers::GenericImage>) -> Self {
+        let port = container.get_host_port_ipv4(8000).unwrap();
+        let host = container.get_host().unwrap();
+        let address = format!("http://{host}:{port}");
+
+        Self { _container: container, address, client: reqwest::Client::new() }
+    }
+
+    #[allow(unused)]
+    pub fn health_check(&self) -> reqwest::RequestBuilder {
+        self.client.get(format!("{}/health_check", self.address))
+    }
+
+    #[allow(unused)]
+    pub fn subscriptions(&self) -> reqwest::RequestBuilder {
+        self.client.post(format!("{}/subscriptions", self.address))
+    }
+}
+
+#[rstest::fixture]
+pub fn app() -> App {
+    let app = testcontainers::GenericImage::new("zero2prod", "build")
+        .with_exposed_port(8000.tcp())
+        .start()
+        .expect("Failed to start container");
+
+    App::new(app)
 }
