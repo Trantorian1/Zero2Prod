@@ -16,10 +16,15 @@ rustflags = ["-C", "linker=clang", "-C", "link-arg=-fuse-ld=mold"]
 
 [dependencies]
 actix-web = "4"
+config = "0.15.11"
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
+# TODO: move this to a `testing` feature
+rstest = "0.25.0"
+tempfile = "3.20.0"
+serde_yaml = "0.9.34"
+
 [dev-dependencies]
 reqwest = "0.12.15"
-rstest = "0.25.0"
 testcontainers = { version = "0.24.0", features = ["blocking", "http_wait"] }

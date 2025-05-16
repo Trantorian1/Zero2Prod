@@ -2,6 +2,7 @@ use zero2prod::*;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
-    let listener = std::net::TcpListener::bind("0.0.0.0:8000")?;
+    let settings = configuration::Settings::new(None);
+    let listener = std::net::TcpListener::bind(settings.address())?;
     run(listener)?.await
 }
