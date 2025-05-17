@@ -2,7 +2,6 @@
 name = "zero2prod"
 version = "0.1.0"
 edition = "2024"
-include = ["Dockerfile"]
 
 [lib]
 path = "src/lib.rs"
@@ -16,6 +15,7 @@ actix-web = "4"
 config = "0.15.11"
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+anyhow = "1.0.98"
 
 # TODO: move this to a `testing` feature
 rstest = "0.25.0"

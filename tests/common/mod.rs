@@ -1,4 +1,5 @@
-use testcontainers::{core::ports::IntoContainerPort as _, runners::SyncRunner};
+use testcontainers::{ImageExt, core::ports::IntoContainerPort as _, runners::SyncRunner};
+use zero2prod::configuration;
 
 pub struct App {
     _container: testcontainers::Container<testcontainers::GenericImage>,
@@ -7,8 +8,11 @@ pub struct App {
 }
 
 impl App {
-    fn new(container: testcontainers::Container<testcontainers::GenericImage>) -> Self {
-        let port = container.get_host_port_ipv4(8000).unwrap();
+    fn new(
+        settings: configuration::Settings,
+        container: testcontainers::Container<testcontainers::GenericImage>,
+    ) -> Self {
+        let port = container.get_host_port_ipv4(settings.routing.port).unwrap();
         let host = container.get_host().unwrap();
         let address = format!("http://{host}:{port}");
 
@@ -27,11 +31,28 @@ impl App {
 }
 
 #[rstest::fixture]
-pub fn app() -> App {
-    let app = testcontainers::GenericImage::new("zero2prod", "build")
-        .with_exposed_port(8000.tcp())
-        .start()
-        .expect("Failed to start container");
+pub fn app(#[default(None)] f: Option<tempfile::NamedTempFile>) -> App {
+    let (app, settings) = match f {
+        Some(f) => {
+            let path = f.path().to_string_lossy();
+            let settings = configuration::Settings::new(Some(&path)).expect("Failed to load settings");
+            let mount = testcontainers::core::Mount::bind_mount(path, "/app/zero2prod.yml");
+            let app = testcontainers::GenericImage::new("zero2prod", "build")
+                .with_exposed_port(settings.routing.port.tcp())
+                .with_mount(mount)
+                .start()
+                .expect("Failed to start app");
+            (app, settings)
+        }
+        None => {
+            let settings = configuration::Settings::new(None).expect("Failed to load settings");
+            let app = testcontainers::GenericImage::new("zero2prod", "build")
+                .with_exposed_port(settings.routing.port.tcp())
+                .start()
+                .expect("Failed to start app");
+            (app, settings)
+        }
+    };
 
-    App::new(app)
+    App::new(settings, app)
 }
