@@ -1,5 +1,4 @@
 use testcontainers::{ImageExt, core::ports::IntoContainerPort as _, runners::SyncRunner};
-use zero2prod::configuration;
 
 pub struct App {
     _container: testcontainers::Container<testcontainers::GenericImage>,
@@ -9,7 +8,7 @@ pub struct App {
 
 impl App {
     fn new(
-        settings: configuration::Settings,
+        settings: zero2prod::configuration::Settings,
         container: testcontainers::Container<testcontainers::GenericImage>,
     ) -> Self {
         let port = container.get_host_port_ipv4(settings.routing.port).unwrap();
@@ -35,19 +34,21 @@ pub fn app(#[default(None)] f: Option<tempfile::NamedTempFile>) -> App {
     let (app, settings) = match f {
         Some(f) => {
             let path = f.path().to_string_lossy();
-            let settings = configuration::Settings::new(Some(&path)).expect("Failed to load settings");
+            let settings = zero2prod::configuration::Settings::new(Some(&path)).expect("Failed to load settings");
             let mount = testcontainers::core::Mount::bind_mount(path, "/app/zero2prod.yml");
             let app = testcontainers::GenericImage::new("zero2prod", "build")
                 .with_exposed_port(settings.routing.port.tcp())
+                .with_log_consumer(zero2prod::logs::TracingConsumer::default())
                 .with_mount(mount)
                 .start()
                 .expect("Failed to start app");
             (app, settings)
         }
         None => {
-            let settings = configuration::Settings::new(None).expect("Failed to load settings");
+            let settings = zero2prod::configuration::Settings::new(None).expect("Failed to load settings");
             let app = testcontainers::GenericImage::new("zero2prod", "build")
                 .with_exposed_port(settings.routing.port.tcp())
+                .with_log_consumer(zero2prod::logs::TracingConsumer::default())
                 .start()
                 .expect("Failed to start app");
             (app, settings)

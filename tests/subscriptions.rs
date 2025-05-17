@@ -1,12 +1,13 @@
 mod common;
 
 use common::*;
+use zero2prod::logs::fixtures::*;
 
 const HEADER: &str = "application/x-www-form-urlencoded";
 
 #[tokio::test]
 #[rstest::rstest]
-async fn subscriptions_200(app: App) {
+async fn subscriptions_200(_logs: (), app: App) {
     let response = app
         .subscriptions()
         .header(reqwest::header::CONTENT_TYPE, HEADER)
@@ -24,7 +25,7 @@ async fn subscriptions_200(app: App) {
 #[case::missing_email(Some("Trantorian"), None)]
 #[case::missing_name(None, Some("trantorian@terminus.net"))]
 #[case::missing_all(None, None)]
-async fn subscriptions_400_missing_data(app: App, #[case] name: Option<&str>, #[case] email: Option<&str>) {
+async fn subscriptions_400_missing_data(_logs: (), app: App, #[case] name: Option<&str>, #[case] email: Option<&str>) {
     let mut form = std::collections::HashMap::new();
     if let Some(name) = name {
         form.insert("name", name);

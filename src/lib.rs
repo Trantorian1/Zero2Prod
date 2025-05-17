@@ -1,4 +1,5 @@
 pub mod configuration;
+pub mod logs;
 mod routes;
 
 pub fn run(listener: std::net::TcpListener) -> Result<actix_web::dev::Server, std::io::Error> {

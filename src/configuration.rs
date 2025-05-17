@@ -38,7 +38,7 @@ impl Settings {
     }
 }
 
-#[cfg(feature = "testing")]
+#[cfg(feature = "fixtures")]
 pub mod fixtures {
     use super::{Routing, Settings};
 
@@ -58,16 +58,18 @@ pub mod fixtures {
 
 #[cfg(test)]
 mod test {
+    use crate::logs::fixtures::*;
+
     use super::Settings;
     use super::fixtures::*;
 
     #[rstest::rstest]
-    fn configuration_valid(valid: tempfile::NamedTempFile) {
+    fn configuration_valid(_logs: (), valid: tempfile::NamedTempFile) {
         Settings::new(Some(valid.path().to_string_lossy().as_ref())).expect("Failed to load valid configuration");
     }
 
     #[rstest::rstest]
-    fn configuration_invalid(invalid: tempfile::NamedTempFile) {
+    fn configuration_invalid(_logs: (), invalid: tempfile::NamedTempFile) {
         Settings::new(Some(invalid.path().to_string_lossy().as_ref()))
             .expect_err("Invalid configuration should fail to load");
     }

@@ -2,9 +2,11 @@ mod common;
 
 use common::*;
 
+use zero2prod::logs::fixtures::*;
+
 #[tokio::test]
 #[rstest::rstest]
-async fn heatlh_check(app: App) {
+async fn heatlh_check(_logs: (), app: App) {
     let response = app.health_check().send().await.expect("Failed to query health check");
 
     assert!(response.status().is_success());

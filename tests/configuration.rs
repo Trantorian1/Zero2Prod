@@ -2,22 +2,30 @@ mod common;
 
 use common::*;
 use zero2prod::configuration::fixtures::*;
+use zero2prod::logs::fixtures::*;
 
 #[tokio::test]
 #[rstest::rstest]
-async fn configuration_none(app: App) {
+async fn configuration_none(_logs: (), app: App) {
     app.health_check().send().await.expect("App failed to start with no config");
 }
 
 #[tokio::test]
 #[rstest::rstest]
-async fn configuration_valid(#[with(Some(valid()))] app: App) {
+async fn configuration_valid(_logs: (), #[with(Some(valid()))] app: App) {
     app.health_check().send().await.expect("App failed to start with valid config");
 }
 
 #[tokio::test]
 #[rstest::rstest]
 #[should_panic]
-async fn configuration_invalid(#[with(Some(invalid()))] app: App) {
+async fn configuration_invalid(_logs: (), #[with(Some(invalid()))] app: App) {
     app.health_check().send().await.expect_err("App should not be able to start with invalid configuration");
 }
+
+// #[rstest::rstest]
+// fn fail(_logs: (), app: App) {
+//     tracing::info!("YO");
+//     tracing::debug!("YOOOO");
+//     panic!()
+// }
