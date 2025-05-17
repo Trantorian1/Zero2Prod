@@ -38,6 +38,7 @@ impl Settings {
     }
 }
 
+#[cfg(feature = "testing")]
 pub mod fixtures {
     use super::{Routing, Settings};
 
