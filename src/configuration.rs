@@ -44,7 +44,7 @@ pub mod fixtures {
     #[rstest::fixture]
     pub fn valid() -> tempfile::NamedTempFile {
         let f = tempfile::NamedTempFile::with_suffix(".yaml").expect("Failed to create temporary file");
-        let settings = Settings { routing: Routing { host: "0.0.0.0".to_string(), port: 8080 }, ..Default::default() };
+        let settings = Settings { routing: Routing { host: "0.0.0.0".to_string(), port: 8080 } };
         serde_yaml::to_writer(&f, &settings).expect("Failed to write settings");
         f
     }
