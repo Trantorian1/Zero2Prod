@@ -1,20 +1,30 @@
 FROM clux/muslrust:1.85.1-stable AS base
 WORKDIR /app
 
-# Note that we do not install cargo chef and sccache through cargo to avoid
-# having to compile them from source
-ENV SCCACHE_URL=https://github.com/mozilla/sccache/releases/download/v0.10.0/sccache-v0.10.0-x86_64-unknown-linux-musl.tar.gz
-ENV SCCACHE_TAR=sccache-v0.10.0-x86_64-unknown-linux-musl.tar.gz
-ENV SCCACHE_BIN=/bin/sccache
-ENV SCCACHE_DIR=/sccache
-ENV SCCACHE=sccache-v0.10.0-x86_64-unknown-linux-musl/sccache
-ENV CHEF_URL=https://github.com/LukeMathWalker/cargo-chef/releases/download/v0.1.71/cargo-chef-x86_64-unknown-linux-gnu.tar.gz
-ENV CHEF_TAR=cargo-chef-x86_64-unknown-linux-gnu.tar.gz
-ENV RUSTC_WRAPPER=/bin/sccache
+# Note that we do not install cargo chef, sccache or mold through cargo to 
+# avoid having to compile them from source
 
-RUN apt-get update -y  && apt-get install -y wget
-RUN wget $SCCACHE_URL && tar -xvpf $SCCACHE_TAR && mv $SCCACHE $SCCACHE_BIN && mkdir sccache
-RUN wget $CHEF_URL && tar -xvpf $CHEF_TAR && mv cargo-chef /bin
+ENV VERSION_SCCACHE="0.10.0"
+ENV VERSION_CHEF="0.1.71"
+ENV VERSION_MOLD="2.39.1"
+
+ENV SCCACHE_URL=https://github.com/mozilla/sccache/releases/download/v$VERSION_SCCACHE/sccache-v$VERSION_SCCACHE-x86_64-unknown-linux-musl.tar.gz
+ENV SCCACHE_DIR=/sccache
+ENV SCCACHE=sccache-v$VERSION_SCCACHE-x86_64-unknown-linux-musl/sccache
+ENV RUSTC_WRAPPER=/usr/local/bin/sccache
+
+ENV CHEF_URL=https://github.com/LukeMathWalker/cargo-chef/releases/download/v$VERSION_CHEF/cargo-chef-x86_64-unknown-linux-gnu.tar.gz
+
+ENV MOLD_URL=https://github.com/rui314/mold/releases/download/v$VERSION_MOLD/mold-$VERSION_MOLD-x86_64-linux.tar.gz
+
+ENV WGET="-O- --timeout=10 --waitretry=3 --retry-connrefused --progress=dot:mega"
+
+RUN apt-get update -y  && apt-get install -y wget clang
+
+RUN mkdir $SCCACHE_DIR
+RUN wget $WGET $SCCACHE_URL | tar -C /bin -xzvpf -
+RUN wget $WGET $CHEF_URL | tar -C /bin -xzvpf -
+RUN wget $WGET $MOLD_URL | tar -C /usr/local --strip-components=1 --no-overwrite-dir -xzvpf -
 
 # Force `rustup` to sync the toolchain in the base `chef` layer so that it 
 # doesn't happen more than once

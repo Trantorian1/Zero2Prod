@@ -11,9 +11,6 @@ path = "src/lib.rs"
 path = "src/main.rs"
 name = "zero2prod"
 
-[target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "linker=clang", "-C", "link-arg=-fuse-ld=mold"]
-
 [dependencies]
 actix-web = "4"
 config = "0.15.11"
