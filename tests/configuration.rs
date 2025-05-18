@@ -22,10 +22,3 @@ async fn configuration_valid(_logs: (), #[with(Some(valid()))] app: App) {
 async fn configuration_invalid(_logs: (), #[with(Some(invalid()))] app: App) {
     app.health_check().send().await.expect_err("App should not be able to start with invalid configuration");
 }
-
-// #[rstest::rstest]
-// fn fail(_logs: (), app: App) {
-//     tracing::info!("YO");
-//     tracing::debug!("YOOOO");
-//     panic!()
-// }

@@ -31,6 +31,7 @@ impl App {
 
 #[rstest::fixture]
 pub fn app(#[default(None)] f: Option<tempfile::NamedTempFile>) -> App {
+    let log_level = std::env::var("RUST_LOG").unwrap_or("info".to_string());
     let (app, settings) = match f {
         Some(f) => {
             let path = f.path().to_string_lossy();
@@ -38,17 +39,18 @@ pub fn app(#[default(None)] f: Option<tempfile::NamedTempFile>) -> App {
             let mount = testcontainers::core::Mount::bind_mount(path, "/app/zero2prod.yml");
             let app = testcontainers::GenericImage::new("zero2prod", "build")
                 .with_exposed_port(settings.routing.port.tcp())
-                .with_log_consumer(zero2prod::logs::TracingConsumer::default())
-                .with_mount(mount)
-                .start()
-                .expect("Failed to start app");
+                .with_log_consumer(zero2prod::logs::TracingConsumer)
+                .with_env_var("RUST_LOG", log_level)
+                .with_mount(mount);
+            let app = app.start().expect("Failed to start app");
             (app, settings)
         }
         None => {
             let settings = zero2prod::configuration::Settings::new(None).expect("Failed to load settings");
             let app = testcontainers::GenericImage::new("zero2prod", "build")
                 .with_exposed_port(settings.routing.port.tcp())
-                .with_log_consumer(zero2prod::logs::TracingConsumer::default())
+                .with_log_consumer(zero2prod::logs::TracingConsumer)
+                .with_env_var("RUST_LOG", log_level)
                 .start()
                 .expect("Failed to start app");
             (app, settings)
