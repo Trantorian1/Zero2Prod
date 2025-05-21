@@ -1,6 +1,6 @@
 .PHONY: watch
 watch:
-	@cargo watch -x check -x "nextest run"
+	@RUST_LOG=trace cargo watch -x "nextest run"
 
 .PHONY: test
 test:

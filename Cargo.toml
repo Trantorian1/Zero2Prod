@@ -43,6 +43,7 @@ testcontainers = { version = "0.24.0", features = [
   "blocking",
   "http_wait",
 ], optional = true }
+thiserror = "2.0.12"
 
 [dev-dependencies]
 zero2prod = { path = ".", features = ["fixtures"] }
