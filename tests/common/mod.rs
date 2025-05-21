@@ -57,5 +57,7 @@ pub fn app(#[default(None)] f: Option<tempfile::NamedTempFile>) -> App {
         }
     };
 
+    tracing::debug!(?settings, "Starting app");
+
     App::new(settings, app)
 }

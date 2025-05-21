@@ -1,6 +1,6 @@
 .PHONY: watch
 watch:
-	@cargo watch -x check -x test -i "tests/**"
+	@cargo watch -x check -x "nextest run"
 
 .PHONY: test
 test:

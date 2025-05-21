@@ -64,7 +64,6 @@ pub mod fixtures {
 #[cfg(test)]
 mod test {
     use crate::logs::fixtures::*;
-    use sealed_test::prelude::*;
 
     use super::Settings;
     use super::fixtures::*;
@@ -81,15 +80,15 @@ mod test {
     }
 
     #[rstest::rstest]
-    #[sealed_test(env = [("Z2P_ROUTING_HOST", "localhost")])]
     fn configuration_from_env_simple(_logs: ()) {
+        unsafe { std::env::set_var("Z2P_ROUTING_HOST", "localhost") };
         let settings = Settings::new(None).expect("Failed to load settings");
         assert_eq!(&settings.routing.host, "localhost");
     }
 
     #[rstest::rstest]
-    #[sealed_test(env = [("Z2P_ROUTING_HOST", "localhost")])]
     fn configuration_from_env_override(_logs: (), valid: tempfile::NamedTempFile) {
+        unsafe { std::env::set_var("Z2P_ROUTING_HOST", "localhost") };
         let settings = Settings::new(Some(valid.path().to_string_lossy().as_ref())).expect("Failed to load settings");
         assert_eq!(&settings.routing.host, "localhost");
     }

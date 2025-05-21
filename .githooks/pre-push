@@ -2,6 +2,6 @@
 
 cargo clippy -- -D warnings
 cargo fmt -- --check
-cargo test
+cargo nextest run
 docker build -t zero2prod:push .
 docker image rm zero2prod:push
