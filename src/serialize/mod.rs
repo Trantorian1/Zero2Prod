@@ -142,9 +142,9 @@ impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
         self,
         _name: &'static str,
         _variant_index: u32,
-        _variant: &'static str,
+        variant: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
-        Ok(None)
+        self.ser(variant.to_string())
     }
 
     fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<Self::Ok, Self::Error>
@@ -322,9 +322,28 @@ mod test {
         }
 
         let foo = Foo { bazz: Bazz };
-        foo.serialize(&mut serializer).expect("Failed serialization");
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
 
+        assert_eq!(res, None);
         assert_eq!(std::env::var("BAZZ").unwrap(), "Bazz");
+    }
+
+    #[rstest::rstest]
+    fn serialize_unit_variant(_logs: (), mut serializer: EnvSerializer) {
+        #[derive(serde::Serialize)]
+        enum Bazz {
+            A,
+        }
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz::A };
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
+
+        assert_eq!(res, None);
+        assert_eq!(std::env::var("BAZZ").unwrap(), "A");
     }
 
     #[rstest::rstest]
@@ -335,8 +354,9 @@ mod test {
         }
 
         let foo = Foo { bazz: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9] };
-        foo.serialize(&mut serializer).expect("Failed serialization");
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
 
+        assert_eq!(res, None);
         assert_eq!(std::env::var("BAZZ").unwrap(), "0 1 2 3 4 5 6 7 8 9");
     }
 
@@ -349,8 +369,9 @@ mod test {
 
         let foo = Foo { bazz: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9] };
         serializer = serializer.with_separator(",");
-        foo.serialize(&mut serializer).expect("Failed serialization");
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
 
+        assert_eq!(res, None);
         assert_eq!(std::env::var("BAZZ").unwrap(), "0,1,2,3,4,5,6,7,8,9");
     }
 
@@ -362,8 +383,9 @@ mod test {
         }
 
         let foo = Foo { bazz: vec![] };
-        foo.serialize(&mut serializer).expect("Failed serialization");
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
 
+        assert_eq!(res, None);
         assert_eq!(std::env::var("BAZZ").unwrap_err(), std::env::VarError::NotPresent);
     }
 
@@ -375,8 +397,9 @@ mod test {
         }
 
         let foo = Foo { bazz: ("Hello".to_string(), "World".to_string()) };
-        foo.serialize(&mut serializer).expect("Failed serialization");
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
 
+        assert_eq!(res, None);
         assert_eq!(std::env::var("BAZZ").unwrap(), "Hello World");
     }
 
@@ -389,8 +412,9 @@ mod test {
 
         let foo = Foo { bazz: ("Hello".to_string(), "World".to_string()) };
         serializer = serializer.with_separator(",");
-        foo.serialize(&mut serializer).expect("Failed serialization");
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
 
+        assert_eq!(res, None);
         assert_eq!(std::env::var("BAZZ").unwrap(), "Hello,World");
     }
 
@@ -402,8 +426,9 @@ mod test {
         }
 
         let foo = Foo { bazz: () };
-        foo.serialize(&mut serializer).expect("Failed serialization");
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
 
+        assert_eq!(res, None);
         assert_eq!(std::env::var("BAZZ").unwrap_err(), std::env::VarError::NotPresent);
     }
 
@@ -415,8 +440,9 @@ mod test {
         }
 
         let foo = Foo { bazz: 42 };
-        foo.serialize(&mut serializer).expect("Failed serialization");
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
 
+        assert_eq!(res, None);
         assert_eq!(std::env::var("BAZZ").unwrap(), "42");
     }
 
@@ -433,8 +459,9 @@ mod test {
         }
 
         let foo = Foo { bazz: Bazz { val: 42 } };
-        foo.serialize(&mut serializer).expect("Failed serialization");
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
 
+        assert_eq!(res, None);
         assert_eq!(std::env::var("BAZZ_VAL").unwrap(), "42");
     }
 
@@ -447,8 +474,9 @@ mod test {
 
         let foo = Foo { bazz: 42 };
         serializer = serializer.with_prefix("foo");
-        foo.serialize(&mut serializer).expect("Failed serialization");
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
 
+        assert_eq!(res, None);
         assert_eq!(std::env::var("FOO_BAZZ").unwrap(), "42");
     }
 }
