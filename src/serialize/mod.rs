@@ -134,8 +134,8 @@ impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
         Ok(None)
     }
 
-    fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok, Self::Error> {
-        Ok(None)
+    fn serialize_unit_struct(self, name: &'static str) -> Result<Self::Ok, Self::Error> {
+        self.ser(name.to_string())
     }
 
     fn serialize_unit_variant(
@@ -310,6 +310,21 @@ mod test {
     #[rstest::fixture]
     fn serializer() -> EnvSerializer {
         EnvSerializer::default()
+    }
+
+    #[rstest::rstest]
+    fn serialize_unit_struct(_logs: (), mut serializer: EnvSerializer) {
+        #[derive(serde::Serialize)]
+        struct Bazz;
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz };
+        foo.serialize(&mut serializer).expect("Failed serialization");
+
+        assert_eq!(std::env::var("BAZZ").unwrap(), "Bazz");
     }
 
     #[rstest::rstest]
