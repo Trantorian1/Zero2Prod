@@ -3654,6 +3654,7 @@ dependencies = [
  "config",
  "dotenv",
  "futures",
+ "hex",
  "reqwest",
  "rstest",
  "serde",

@@ -1,8 +1,9 @@
 type SerOk = Option<(String, String)>;
 
+#[derive(Clone)]
 pub struct EnvSerializer {
     path: String,
-    seperator: String,
+    separator: String,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -19,7 +20,13 @@ impl serde::ser::Error for Error {
 
 impl Default for EnvSerializer {
     fn default() -> Self {
-        Self { path: Default::default(), seperator: " ".to_string() }
+        Self { path: Default::default(), separator: " ".to_string() }
+    }
+}
+
+impl EnvSerializer {
+    fn set_var(&self, k: &str, v: &str) {
+        unsafe { std::env::set_var(&k.to_uppercase(), &v) };
     }
 }
 
@@ -29,11 +36,15 @@ impl EnvSerializer {
     }
 
     pub fn with_separator(self, separator: &str) -> Self {
-        Self { seperator: separator.to_string(), ..self }
+        Self { separator: separator.to_string(), ..self }
     }
 
     pub fn with_prefix(self, prefix: &str) -> Self {
         Self { path: prefix.to_string(), ..self }
+    }
+
+    fn ser(&self, val: String) -> Result<SerOk, Error> {
+        Ok(Some((self.path.clone(), val)))
     }
 }
 
@@ -41,7 +52,7 @@ impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
     type Ok = SerOk;
     type Error = Error;
 
-    type SerializeSeq = serde::ser::Impossible<Self::Ok, Error>;
+    type SerializeSeq = EnvSerializerSeq;
     type SerializeTuple = serde::ser::Impossible<Self::Ok, Error>;
     type SerializeTupleStruct = serde::ser::Impossible<Self::Ok, Error>;
     type SerializeTupleVariant = serde::ser::Impossible<Self::Ok, Error>;
@@ -51,8 +62,8 @@ impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
         match v {
-            true => Ok(Some((self.path.clone(), "1".to_string()))),
-            false => Ok(Some((self.path.clone(), "2".to_string()))),
+            true => self.ser("1".to_string()),
+            false => self.ser("2".to_string()),
         }
     }
 
@@ -69,7 +80,7 @@ impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
     }
 
     fn serialize_i64(self, v: i64) -> Result<Self::Ok, Self::Error> {
-        Ok(Some((self.path.clone(), v.to_string())))
+        self.ser(v.to_string())
     }
 
     fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
@@ -85,7 +96,7 @@ impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
     }
 
     fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
-        Ok(Some((self.path.clone(), v.to_string())))
+        self.ser(v.to_string())
     }
 
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
@@ -93,19 +104,19 @@ impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
     }
 
     fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
-        Ok(Some((self.path.clone(), v.to_string())))
+        self.ser(v.to_string())
     }
 
     fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
-        Ok(Some((self.path.clone(), v.to_string())))
+        self.ser(v.to_string())
     }
 
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
-        Ok(Some((self.path.clone(), v.to_string())))
+        self.ser(v.to_string())
     }
 
     fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.ser(hex::encode(v))
     }
 
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
@@ -123,20 +134,20 @@ impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
         Ok(None)
     }
 
-    fn serialize_unit_struct(self, name: &'static str) -> Result<Self::Ok, Self::Error> {
+    fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok, Self::Error> {
         Ok(None)
     }
 
     fn serialize_unit_variant(
         self,
-        name: &'static str,
-        variant_index: u32,
-        variant: &'static str,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
         Ok(None)
     }
 
-    fn serialize_newtype_struct<T>(self, name: &'static str, value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<Self::Ok, Self::Error>
     where
         T: ?Sized + serde::Serialize,
     {
@@ -145,9 +156,9 @@ impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
 
     fn serialize_newtype_variant<T>(
         self,
-        name: &'static str,
-        variant_index: u32,
-        variant: &'static str,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
@@ -157,7 +168,7 @@ impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
     }
 
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
-        todo!()
+        Ok(len.map(|n| EnvSerializerSeq { elems: Vec::with_capacity(n), serializer: self.clone() }).unwrap())
     }
 
     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple, Self::Error> {
@@ -201,6 +212,35 @@ impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
     }
 }
 
+pub struct EnvSerializerSeq {
+    elems: Vec<String>,
+    serializer: EnvSerializer,
+}
+
+impl serde::ser::SerializeSeq for EnvSerializerSeq {
+    type Ok = SerOk;
+    type Error = Error;
+
+    fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
+    where
+        T: ?Sized + serde::Serialize,
+    {
+        if let Ok(Some((_, v))) = value.serialize(&mut self.serializer) {
+            self.elems.push(v)
+        }
+        Ok(())
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        if !self.elems.is_empty() {
+            let k = &self.serializer.path;
+            let v = self.elems.join(&self.serializer.separator);
+            self.serializer.set_var(k, &v);
+        }
+        Ok(None)
+    }
+}
+
 impl<'a> serde::ser::SerializeStruct for &'a mut EnvSerializer {
     type Ok = SerOk;
     type Error = Error;
@@ -214,7 +254,7 @@ impl<'a> serde::ser::SerializeStruct for &'a mut EnvSerializer {
         self.path = path_new;
 
         if let Ok(Some((k, v))) = value.serialize(&mut **self) {
-            unsafe { std::env::set_var(&k.to_uppercase(), &v) };
+            self.set_var(&k, &v);
         }
 
         self.path = path;
@@ -236,6 +276,46 @@ mod test {
     #[rstest::fixture]
     fn serializer() -> EnvSerializer {
         EnvSerializer::default()
+    }
+
+    #[rstest::rstest]
+    fn serialize_sequence(_logs: (), mut serializer: EnvSerializer) {
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Vec<u8>,
+        }
+
+        let foo = Foo { bazz: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9] };
+        foo.serialize(&mut serializer).expect("Failed serialization");
+
+        assert_eq!(std::env::var("BAZZ").unwrap(), "0 1 2 3 4 5 6 7 8 9");
+    }
+
+    #[rstest::rstest]
+    fn serialize_sequence_sep(_logs: (), mut serializer: EnvSerializer) {
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Vec<u8>,
+        }
+
+        let foo = Foo { bazz: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9] };
+        serializer = serializer.with_separator(",");
+        foo.serialize(&mut serializer).expect("Failed serialization");
+
+        assert_eq!(std::env::var("BAZZ").unwrap(), "0,1,2,3,4,5,6,7,8,9");
+    }
+
+    #[rstest::rstest]
+    fn serialize_sequence_empty(_logs: (), mut serializer: EnvSerializer) {
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Vec<u8>,
+        }
+
+        let foo = Foo { bazz: vec![] };
+        foo.serialize(&mut serializer).expect("Failed serialization");
+
+        assert_eq!(std::env::var("BAZZ").unwrap_err(), std::env::VarError::NotPresent);
     }
 
     #[rstest::rstest]
