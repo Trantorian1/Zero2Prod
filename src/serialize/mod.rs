@@ -54,8 +54,8 @@ impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
 
     type SerializeSeq = EnvSerializerSeq;
     type SerializeTuple = EnvSerializerSeq;
-    type SerializeTupleStruct = serde::ser::Impossible<Self::Ok, Error>;
-    type SerializeTupleVariant = serde::ser::Impossible<Self::Ok, Error>;
+    type SerializeTupleStruct = EnvSerializerSeq;
+    type SerializeTupleVariant = EnvSerializerTupleVariant;
     type SerializeMap = serde::ser::Impossible<Self::Ok, Error>;
     type SerializeStruct = Self;
     type SerializeStructVariant = serde::ser::Impossible<Self::Ok, Error>;
@@ -187,17 +187,21 @@ impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
         _name: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleStruct, Self::Error> {
-        todo!()
+        Ok(EnvSerializerSeq { elems: Vec::with_capacity(len), serializer: self.clone() })
     }
 
     fn serialize_tuple_variant(
         self,
-        name: &'static str,
-        variant_index: u32,
+        _name: &'static str,
+        _variant_index: u32,
         variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        todo!()
+        Ok(EnvSerializerTupleVariant {
+            variant: variant.to_string(),
+            elems: Vec::with_capacity(len),
+            serializer: self.clone(),
+        })
     }
 
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
@@ -248,10 +252,9 @@ impl<'a> serde::ser::SerializeSeq for &'a mut EnvSerializerSeq {
     where
         T: ?Sized + serde::Serialize,
     {
-        if let Ok(Some((_, v))) = value.serialize(&mut self.serializer) {
-            self.elems.push(v)
-        }
-        Ok(())
+        value.serialize(&mut self.serializer).map(|v| {
+            v.map(|(_, v)| self.elems.push(v));
+        })
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
@@ -277,6 +280,51 @@ impl serde::ser::SerializeTuple for EnvSerializerSeq {
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
         serde::ser::SerializeSeq::end(self)
+    }
+}
+
+impl serde::ser::SerializeTupleStruct for EnvSerializerSeq {
+    type Ok = SerOk;
+    type Error = Error;
+
+    fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
+    where
+        T: ?Sized + serde::Serialize,
+    {
+        serde::ser::SerializeSeq::serialize_element(self, value)
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        serde::ser::SerializeSeq::end(self)
+    }
+}
+
+pub struct EnvSerializerTupleVariant {
+    variant: String,
+    elems: Vec<String>,
+    serializer: EnvSerializer,
+}
+
+impl serde::ser::SerializeTupleVariant for EnvSerializerTupleVariant {
+    type Ok = SerOk;
+    type Error = Error;
+
+    fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
+    where
+        T: ?Sized + serde::Serialize,
+    {
+        value.serialize(&mut self.serializer).map(|v| {
+            v.map(|(_, v)| self.elems.push(v));
+        })
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        if !self.elems.is_empty() {
+            let k = &self.serializer.path;
+            let v = format!("{}_{}", self.variant, self.elems.join("_"));
+            self.serializer.set_var(k, &v);
+        }
+        Ok(None)
     }
 }
 
@@ -469,6 +517,57 @@ mod test {
 
         assert_eq!(res, None);
         assert_eq!(std::env::var("BAZZ").unwrap_err(), std::env::VarError::NotPresent);
+    }
+
+    #[rstest::rstest]
+    fn serialize_tuple_struct(_logs: (), mut serializer: EnvSerializer) {
+        #[derive(serde::Serialize)]
+        struct Bazz(char, char, char);
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz('a', 'b', 'c') };
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
+
+        assert_eq!(res, None);
+        assert_eq!(std::env::var("BAZZ").unwrap(), "a b c");
+    }
+
+    #[rstest::rstest]
+    fn serialize_tuple_struct_sep(_logs: (), mut serializer: EnvSerializer) {
+        #[derive(serde::Serialize)]
+        struct Bazz(char, char, char);
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz('a', 'b', 'c') };
+        serializer = serializer.with_separator(",");
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
+
+        assert_eq!(res, None);
+        assert_eq!(std::env::var("BAZZ").unwrap(), "a,b,c");
+    }
+
+    #[rstest::rstest]
+    fn serialize_tuple_variant(_logs: (), mut serializer: EnvSerializer) {
+        #[derive(serde::Serialize)]
+        enum Bazz {
+            A(char, char, char),
+        }
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz::A('a', 'b', 'c') };
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
+
+        assert_eq!(res, None);
+        assert_eq!(std::env::var("BAZZ").unwrap(), "A_a_b_c");
     }
 
     #[rstest::rstest]
