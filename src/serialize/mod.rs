@@ -26,7 +26,7 @@ impl Default for EnvSerializer {
 
 impl EnvSerializer {
     fn set_var(&self, k: &str, v: &str) {
-        unsafe { std::env::set_var(&k.to_uppercase(), &v) };
+        unsafe { std::env::set_var(k.to_uppercase(), v) };
     }
 }
 
@@ -48,7 +48,7 @@ impl EnvSerializer {
     }
 }
 
-impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
+impl serde::ser::Serializer for &'_ mut EnvSerializer {
     type Ok = SerOk;
     type Error = Error;
 
@@ -244,7 +244,7 @@ impl serde::ser::SerializeSeq for EnvSerializerSeq {
     }
 }
 
-impl<'a> serde::ser::SerializeSeq for &'a mut EnvSerializerSeq {
+impl serde::ser::SerializeSeq for &'_ mut EnvSerializerSeq {
     type Ok = SerOk;
     type Error = Error;
 
@@ -253,7 +253,9 @@ impl<'a> serde::ser::SerializeSeq for &'a mut EnvSerializerSeq {
         T: ?Sized + serde::Serialize,
     {
         value.serialize(&mut self.serializer).map(|v| {
-            v.map(|(_, v)| self.elems.push(v));
+            if let Some((_, v)) = v {
+                self.elems.push(v);
+            }
         })
     }
 
@@ -314,7 +316,9 @@ impl serde::ser::SerializeTupleVariant for EnvSerializerTupleVariant {
         T: ?Sized + serde::Serialize,
     {
         value.serialize(&mut self.serializer).map(|v| {
-            v.map(|(_, v)| self.elems.push(v));
+            if let Some((_, v)) = v {
+                self.elems.push(v);
+            }
         })
     }
 
@@ -328,7 +332,7 @@ impl serde::ser::SerializeTupleVariant for EnvSerializerTupleVariant {
     }
 }
 
-impl<'a> serde::ser::SerializeStruct for &'a mut EnvSerializer {
+impl serde::ser::SerializeStruct for &'_ mut EnvSerializer {
     type Ok = SerOk;
     type Error = Error;
 
