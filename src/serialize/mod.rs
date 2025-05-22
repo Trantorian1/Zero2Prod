@@ -158,13 +158,18 @@ impl<'a> serde::ser::Serializer for &'a mut EnvSerializer {
         self,
         _name: &'static str,
         _variant_index: u32,
-        _variant: &'static str,
+        variant: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
         T: ?Sized + serde::Serialize,
     {
-        value.serialize(self)
+        value.serialize(self).map(|v| {
+            v.map(|(k, v)| {
+                let v = format!("{variant}_{v}");
+                (k, v)
+            })
+        })
     }
 
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
@@ -344,6 +349,40 @@ mod test {
 
         assert_eq!(res, None);
         assert_eq!(std::env::var("BAZZ").unwrap(), "A");
+    }
+
+    #[rstest::rstest]
+    fn serialize_newtype_struct(_logs: (), mut serializer: EnvSerializer) {
+        #[derive(serde::Serialize)]
+        struct Bazz(u8);
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz(42) };
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
+
+        assert_eq!(res, None);
+        assert_eq!(std::env::var("BAZZ").unwrap(), "42");
+    }
+
+    #[rstest::rstest]
+    fn serialize_newtype_variant(_logs: (), mut serializer: EnvSerializer) {
+        #[derive(serde::Serialize)]
+        enum Bazz {
+            A(u8),
+        }
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz::A(42) };
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
+
+        assert_eq!(res, None);
+        assert_eq!(std::env::var("BAZZ").unwrap(), "A_42");
     }
 
     #[rstest::rstest]
