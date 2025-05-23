@@ -58,7 +58,7 @@ impl serde::ser::Serializer for &'_ mut EnvSerializer {
     type SerializeTupleVariant = EnvSerializerTupleVariant;
     type SerializeMap = EnvSerializerMap;
     type SerializeStruct = Self;
-    type SerializeStructVariant = serde::ser::Impossible<Self::Ok, Error>;
+    type SerializeStructVariant = EnvSerializerStructVariant;
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
         match v {
@@ -219,10 +219,10 @@ impl serde::ser::Serializer for &'_ mut EnvSerializer {
         self,
         _name: &'static str,
         _variant_index: u32,
-        _variant: &'static str,
+        variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
-        todo!()
+        Ok(EnvSerializerStructVariant { variant: variant.to_string(), serializer: self.clone() })
     }
 }
 
@@ -394,11 +394,36 @@ impl serde::ser::SerializeStruct for &'_ mut EnvSerializer {
         let path_new = if !self.path.is_empty() { format!("{path}_{key}") } else { key.to_string() };
         self.path = path_new;
 
-        if let Ok(Some((k, v))) = value.serialize(&mut **self) {
+        if let Some((k, v)) = value.serialize(&mut **self)? {
             self.set_var(&k, &v);
         }
 
         self.path = path;
+        Ok(())
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        Ok(None)
+    }
+}
+
+pub struct EnvSerializerStructVariant {
+    variant: String,
+    serializer: EnvSerializer,
+}
+
+impl serde::ser::SerializeStructVariant for EnvSerializerStructVariant {
+    type Ok = SerOk;
+    type Error = Error;
+
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+    where
+        T: ?Sized + serde::Serialize,
+    {
+        if let Some((_, v)) = value.serialize(&mut self.serializer)? {
+            self.serializer.set_var(&format!("{}_{}_{}", self.serializer.path, self.variant, key), &v);
+        }
+
         Ok(())
     }
 
@@ -674,6 +699,26 @@ mod test {
 
         assert_eq!(res, None);
         assert_eq!(std::env::var("BAZZ_VAL").unwrap(), "42");
+    }
+
+    #[rstest::rstest]
+    fn serialize_struct_variant(_logs: (), mut serializer: EnvSerializer) {
+        #[derive(serde::Serialize)]
+        enum Bazz {
+            ABC { a: char, b: char, c: char },
+        }
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz::ABC { a: 'a', b: 'b', c: 'c' } };
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
+
+        assert_eq!(res, None);
+        assert_eq!(std::env::var("BAZZ_ABC_A").unwrap(), "a");
+        assert_eq!(std::env::var("BAZZ_ABC_B").unwrap(), "b");
+        assert_eq!(std::env::var("BAZZ_ABC_C").unwrap(), "c");
     }
 
     #[rstest::rstest]
