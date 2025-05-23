@@ -56,7 +56,7 @@ impl serde::ser::Serializer for &'_ mut EnvSerializer {
     type SerializeTuple = EnvSerializerSeq;
     type SerializeTupleStruct = EnvSerializerSeq;
     type SerializeTupleVariant = EnvSerializerTupleVariant;
-    type SerializeMap = serde::ser::Impossible<Self::Ok, Error>;
+    type SerializeMap = EnvSerializerMap;
     type SerializeStruct = Self;
     type SerializeStructVariant = serde::ser::Impossible<Self::Ok, Error>;
 
@@ -204,8 +204,11 @@ impl serde::ser::Serializer for &'_ mut EnvSerializer {
         })
     }
 
-    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
-        todo!()
+    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
+        Ok(EnvSerializerMap {
+            elems: len.map(std::collections::HashMap::with_capacity).unwrap_or_default(),
+            serializer: self.clone(),
+        })
     }
 
     fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct, Self::Error> {
@@ -328,6 +331,53 @@ impl serde::ser::SerializeTupleVariant for EnvSerializerTupleVariant {
             let v = format!("{}_{}", self.variant, self.elems.join("_"));
             self.serializer.set_var(k, &v);
         }
+        Ok(None)
+    }
+}
+
+pub struct EnvSerializerMap {
+    elems: std::collections::HashMap<String, String>,
+    serializer: EnvSerializer,
+}
+
+impl serde::ser::SerializeMap for EnvSerializerMap {
+    type Ok = SerOk;
+    type Error = Error;
+
+    fn serialize_key<T>(&mut self, _key: &T) -> Result<(), Self::Error>
+    where
+        T: ?Sized + serde::Serialize,
+    {
+        unimplemented!("Use serde::ser::SerializeMap::serialize_entry instead")
+    }
+
+    fn serialize_value<T>(&mut self, _value: &T) -> Result<(), Self::Error>
+    where
+        T: ?Sized + serde::Serialize,
+    {
+        unimplemented!("Use serde::ser::SerializeMap::serialize_entry instead")
+    }
+
+    fn serialize_entry<K, V>(&mut self, key: &K, value: &V) -> Result<(), Self::Error>
+    where
+        K: ?Sized + serde::Serialize,
+        V: ?Sized + serde::Serialize,
+    {
+        let k = key.serialize(&mut self.serializer)?;
+        let v = value.serialize(&mut self.serializer)?;
+
+        if let (Some((_, k)), Some((_, v))) = (k, v) {
+            self.elems.insert(k, v);
+        }
+
+        Ok(())
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        for (k, v) in self.elems.iter() {
+            self.serializer.set_var(&format!("{}_{}", self.serializer.path, k), v);
+        }
+
         Ok(None)
     }
 }
@@ -572,6 +622,25 @@ mod test {
 
         assert_eq!(res, None);
         assert_eq!(std::env::var("BAZZ").unwrap(), "A_a_b_c");
+    }
+
+    #[rstest::rstest]
+    fn serialize_map(_logs: (), mut serializer: EnvSerializer) {
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: std::collections::HashMap<String, String>,
+        }
+
+        let mut map = std::collections::HashMap::new();
+        map.insert("Hello".to_string(), "World".to_string());
+        map.insert("From".to_string(), "Trantorian".to_string());
+
+        let foo = Foo { bazz: map };
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
+
+        assert_eq!(res, None);
+        assert_eq!(std::env::var("BAZZ_HELLO").unwrap(), "World");
+        assert_eq!(std::env::var("BAZZ_FROM").unwrap(), "Trantorian");
     }
 
     #[rstest::rstest]
