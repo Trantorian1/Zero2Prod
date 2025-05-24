@@ -21,7 +21,7 @@ impl Default for Routing {
 
 impl Settings {
     pub fn new(path: Option<&str>) -> anyhow::Result<Self> {
-        let env = config::Environment::with_prefix("z2p").separator("_");
+        let env = config::Environment::with_prefix("Z2P").separator("_");
         match path {
             Some(path) => config::Config::builder()
                 .add_source(config::File::with_name(path))

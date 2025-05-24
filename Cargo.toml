@@ -10,6 +10,10 @@ path = "src/lib.rs"
 path = "src/main.rs"
 name = "zero2prod"
 
+[[bin]]
+path = "src/health.rs"
+name = "health"
+
 [features]
 default = []
 fixtures = [
@@ -45,10 +49,10 @@ testcontainers = { version = "0.24.0", features = [
 ], optional = true }
 thiserror = "2.0.12"
 hex = "0.4.3"
+reqwest = { version = "0.12.15", features = ["blocking"] }
 
 [dev-dependencies]
 zero2prod = { path = ".", features = ["fixtures"] }
-reqwest = "0.12.15"
 testcontainers = { version = "0.24.0", features = ["blocking", "http_wait"] }
 rstest = "0.25.0"
 tempfile = "3.20.0"

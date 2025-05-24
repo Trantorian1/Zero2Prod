@@ -1,7 +1,6 @@
 pub mod configuration;
 pub mod logs;
-
-pub(crate) mod serialize;
+pub mod serialize;
 
 mod routes;
 
