@@ -34,13 +34,13 @@ impl serde::ser::Error for Error {
 impl EnvSerializer {
     fn set_var(&mut self, k: &str, v: &str) -> std::io::Result<()> {
         use std::io::Write;
-        write!(self.writer.borrow_mut(), "{k}: {v}\n")
+        writeln!(self.writer.borrow_mut(), "{k}: {v}")
     }
 }
 
 impl EnvSerializer {
     fn new(path: &str) -> std::io::Result<Self> {
-        let f = std::fs::OpenOptions::new().write(true).create(true).open(path)?;
+        let f = std::fs::OpenOptions::new().write(true).create(true).truncate(true).open(path)?;
         let w = std::io::BufWriter::new(f);
         let c = std::rc::Rc::new(std::cell::RefCell::new(w));
         Ok(Self { path: Default::default(), separator: " ".to_string(), writer: c })
