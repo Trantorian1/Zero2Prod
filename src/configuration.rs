@@ -2,15 +2,21 @@ use anyhow::Context;
 
 #[derive(Eq, PartialEq, Default, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Settings {
+    #[serde(default)]
     pub routing: Routing,
 }
 
 #[derive(Eq, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Routing {
-    #[serde(default)]
     pub host: String,
-    #[serde(default)]
     pub port: u16,
+}
+
+#[derive(Eq, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
+pub struct Posgres {
+    user: String,
+    password: String,
+    port: u16,
 }
 
 impl Default for Routing {
@@ -57,7 +63,15 @@ pub mod fixtures {
 
     #[rstest::fixture]
     pub fn invalid() -> tempfile::NamedTempFile {
-        tempfile::NamedTempFile::with_suffix(".yaml").expect("Failed to create temporary file")
+        #[derive(serde::Serialize)]
+        struct SettingsInvalid {
+            routing: String,
+        }
+
+        let f = tempfile::NamedTempFile::with_suffix(".yaml").expect("Failed to create temporary file");
+        let settings = SettingsInvalid { routing: "invalid".to_string() };
+        serde_yaml::to_writer(&f, &settings).expect("Failed to write settings");
+        f
     }
 }
 
