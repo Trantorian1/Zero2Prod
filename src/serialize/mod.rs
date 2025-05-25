@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use serde::Serialize;
 
 type SerOk = Option<(String, String)>;
@@ -11,7 +13,7 @@ pub fn serialize_settings(settings: &crate::configuration::Settings) {
 
 #[derive(Clone)]
 struct EnvSerializer {
-    path: String,
+    key: String,
     separator: String,
     writer: std::rc::Rc<std::cell::RefCell<std::io::BufWriter<std::fs::File>>>,
 }
@@ -33,17 +35,17 @@ impl serde::ser::Error for Error {
 
 impl EnvSerializer {
     fn set_var(&mut self, k: &str, v: &str) -> std::io::Result<()> {
-        use std::io::Write;
-        writeln!(self.writer.borrow_mut(), "{k}: {v}")
+        writeln!(self.writer.borrow_mut(), "{}={}", k.to_uppercase(), v)
     }
 }
 
 impl EnvSerializer {
-    fn new(path: &str) -> std::io::Result<Self> {
-        let f = std::fs::OpenOptions::new().write(true).create(true).truncate(true).open(path)?;
+    fn new(path: impl Into<std::path::PathBuf>) -> std::io::Result<Self> {
+        let p = path.into();
+        let f = std::fs::OpenOptions::new().write(true).create(true).truncate(true).open(&p)?;
         let w = std::io::BufWriter::new(f);
         let c = std::rc::Rc::new(std::cell::RefCell::new(w));
-        Ok(Self { path: Default::default(), separator: " ".to_string(), writer: c })
+        Ok(Self { key: Default::default(), separator: " ".to_string(), writer: c })
     }
 
     fn with_separator(self, separator: &str) -> Self {
@@ -51,11 +53,11 @@ impl EnvSerializer {
     }
 
     fn with_prefix(self, prefix: &str) -> Self {
-        Self { path: prefix.to_string(), ..self }
+        Self { key: prefix.to_string(), ..self }
     }
 
     fn ser(&self, val: String) -> Result<SerOk, Error> {
-        Ok(Some((self.path.clone(), val)))
+        Ok(Some((self.key.clone(), val)))
     }
 }
 
@@ -275,10 +277,11 @@ impl serde::ser::SerializeSeq for &'_ mut EnvSerializerSeq {
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
         if !self.elems.is_empty() {
-            let k = self.serializer.path.clone();
+            let k = self.serializer.key.clone();
             let v = self.elems.join(&self.serializer.separator);
             self.serializer.set_var(&k, &v)?;
         }
+        self.serializer.writer.borrow_mut().flush()?;
         Ok(None)
     }
 }
@@ -338,10 +341,11 @@ impl serde::ser::SerializeTupleVariant for EnvSerializerTupleVariant {
 
     fn end(mut self) -> Result<Self::Ok, Self::Error> {
         if !self.elems.is_empty() {
-            let k = self.serializer.path.clone();
+            let k = self.serializer.key.clone();
             let v = format!("{}_{}", self.variant, self.elems.join("_"));
             self.serializer.set_var(&k, &v)?;
         }
+        self.serializer.writer.borrow_mut().flush()?;
         Ok(None)
     }
 }
@@ -386,9 +390,9 @@ impl serde::ser::SerializeMap for EnvSerializerMap {
 
     fn end(mut self) -> Result<Self::Ok, Self::Error> {
         for (k, v) in self.elems.iter() {
-            self.serializer.set_var(&format!("{}_{}", self.serializer.path, k), v)?;
+            self.serializer.set_var(&format!("{}_{}", self.serializer.key, k), v)?;
         }
-
+        self.serializer.writer.borrow_mut().flush()?;
         Ok(None)
     }
 }
@@ -401,15 +405,16 @@ impl serde::ser::SerializeStruct for &'_ mut EnvSerializer {
     where
         T: ?Sized + serde::Serialize,
     {
-        let path = self.path.clone();
-        let path_new = if !self.path.is_empty() { format!("{path}_{key}") } else { key.to_string() };
-        self.path = path_new;
+        let path = self.key.clone();
+        let path_new = if !self.key.is_empty() { format!("{path}_{key}") } else { key.to_string() };
+        self.key = path_new;
 
         if let Some((k, v)) = value.serialize(&mut **self)? {
             self.set_var(&k, &v)?;
         }
+        self.writer.borrow_mut().flush()?;
 
-        self.path = path;
+        self.key = path;
         Ok(())
     }
 
@@ -432,9 +437,9 @@ impl serde::ser::SerializeStructVariant for EnvSerializerStructVariant {
         T: ?Sized + serde::Serialize,
     {
         if let Some((_, v)) = value.serialize(&mut self.serializer)? {
-            self.serializer.set_var(&format!("{}_{}_{}", self.serializer.path, self.variant, key), &v)?;
+            self.serializer.set_var(&format!("{}_{}_{}", self.serializer.key, self.variant, key), &v)?;
         }
-
+        self.serializer.writer.borrow_mut().flush()?;
         Ok(())
     }
 
@@ -445,16 +450,21 @@ impl serde::ser::SerializeStructVariant for EnvSerializerStructVariant {
 
 #[cfg(test)]
 mod test {
-    // use serde::Serialize;
-    //
-    // use super::*;
-    // use crate::logs::fixtures::*;
-    //
-    // #[rstest::fixture]
-    // fn serializer() -> EnvSerializer {
-    //     EnvSerializer::default()
-    // }
-    //
+    use serde::Serialize;
+
+    use super::*;
+    use crate::logs::fixtures::*;
+
+    #[rstest::fixture]
+    fn env() -> tempfile::NamedTempFile {
+        tempfile::NamedTempFile::with_suffix(".env").expect("Failed to create temporary file")
+    }
+
+    #[rstest::fixture]
+    fn serializer(env: tempfile::NamedTempFile) -> EnvSerializer {
+        EnvSerializer::new(env.path()).expect("Failed to create serializer")
+    }
+
     // #[rstest::rstest]
     // fn serialize_unit_struct(_logs: (), mut serializer: EnvSerializer) {
     //     #[derive(serde::Serialize)]
@@ -678,21 +688,25 @@ mod test {
     //     assert_eq!(std::env::var("BAZZ_HELLO").unwrap(), "World");
     //     assert_eq!(std::env::var("BAZZ_FROM").unwrap(), "Trantorian");
     // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_struct(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: u8,
-    //     }
-    //
-    //     let foo = Foo { bazz: 42 };
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ").unwrap(), "42");
-    // }
-    //
+
+    #[rstest::rstest]
+    fn serialize_struct(_logs: ()) {
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: u8,
+        }
+
+        let f = tempfile::NamedTempFile::with_suffix(".env").expect("Failed to create temporary file");
+        let mut serializer = EnvSerializer::new(f.path()).expect("Failed to create serializer");
+
+        let foo = Foo { bazz: 42 };
+        let res = foo.serialize(&mut serializer).expect("Failed serialization");
+        dotenvy::from_read(&f).expect("Failed to load env");
+
+        assert_eq!(res, None);
+        assert_eq!(std::env::var("BAZZ").unwrap(), "42");
+    }
+
     // #[rstest::rstest]
     // fn serialize_struct_nested(_logs: (), mut serializer: EnvSerializer) {
     //     #[derive(serde::Serialize)]
