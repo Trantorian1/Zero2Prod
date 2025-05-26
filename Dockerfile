@@ -64,8 +64,12 @@ FROM scratch
 WORKDIR /bin
 
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/zero2prod .
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/health .
 COPY --from=tini /bin/tini .
 
 WORKDIR /app
 
 ENTRYPOINT ["tini", "--", "zero2prod"]
+
+HEALTHCHECK --interval=1s --timeout=1s --retries=3 \
+	CMD ["health"]
