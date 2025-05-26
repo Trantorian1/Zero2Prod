@@ -1,5 +1,3 @@
-#![cfg(feature = "fixtures")]
-
 use futures::{FutureExt, future::BoxFuture};
 
 pub struct TracingConsumer;

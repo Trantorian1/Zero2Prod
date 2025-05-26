@@ -35,7 +35,7 @@ impl EnvSerializerBuilder {
     }
 
     pub fn with_prefix(self, prefix: impl Into<String>) -> Self {
-        Self { prefix: format!("{}", prefix.into()), ..self }
+        Self { prefix: prefix.into(), ..self }
     }
 
     pub fn with_separator(self, sep: impl Into<String>) -> Self {
@@ -763,14 +763,14 @@ mod test {
     fn serialize_struct_variant(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
         #[derive(serde::Serialize)]
         enum Bazz {
-            ABC { a: char, b: char, c: char },
+            Abc { a: char, b: char, c: char },
         }
         #[derive(serde::Serialize)]
         struct Foo {
             bazz: Bazz,
         }
 
-        let foo = Foo { bazz: Bazz::ABC { a: 'a', b: 'b', c: 'c' } };
+        let foo = Foo { bazz: Bazz::Abc { a: 'a', b: 'b', c: 'c' } };
         let res = serializer.with_path(env.path()).serialize(&foo);
         dotenvy::from_read(env).expect("Failed to load env");
 
