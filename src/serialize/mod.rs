@@ -7,7 +7,7 @@ pub fn serialize_settings(settings: &crate::configuration::Settings) {
     tracing::trace!("App settings: {settings:#?}");
     EnvSerializerBuilder::new()
         .with_prefix("Z2P")
-        .with_seperator(" ")
+        .with_separator(" ")
         .serialize(&settings)
         .expect("Failed to export settings to env");
 }
@@ -35,10 +35,10 @@ impl EnvSerializerBuilder {
     }
 
     pub fn with_prefix(self, prefix: impl Into<String>) -> Self {
-        Self { prefix: format!("{}_", prefix.into()), ..self }
+        Self { prefix: format!("{}", prefix.into()), ..self }
     }
 
-    pub fn with_seperator(self, sep: impl Into<String>) -> Self {
+    pub fn with_separator(self, sep: impl Into<String>) -> Self {
         Self { separator: sep.into(), ..self }
     }
 
@@ -304,7 +304,7 @@ impl serde::ser::SerializeSeq for &'_ mut EnvSerializerSeq {
     fn end(self) -> Result<Self::Ok, Self::Error> {
         if !self.elems.is_empty() {
             let k = self.serializer.key.clone();
-            let v = self.elems.join(&self.serializer.separator);
+            let v = ["\"", &self.elems.join(&self.serializer.separator), "\""].join("");
             self.serializer.set_var(&k, &v)?;
         }
         self.serializer.writer.borrow_mut().flush()?;
@@ -489,229 +489,240 @@ mod test {
         EnvSerializerBuilder::new()
     }
 
-    // #[rstest::rstest]
-    // fn serialize_unit_struct(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     struct Bazz;
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: Bazz,
-    //     }
-    //
-    //     let foo = Foo { bazz: Bazz };
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ").unwrap(), "Bazz");
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_unit_variant(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     enum Bazz {
-    //         A,
-    //     }
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: Bazz,
-    //     }
-    //
-    //     let foo = Foo { bazz: Bazz::A };
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ").unwrap(), "A");
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_newtype_struct(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     struct Bazz(u8);
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: Bazz,
-    //     }
-    //
-    //     let foo = Foo { bazz: Bazz(42) };
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ").unwrap(), "42");
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_newtype_variant(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     enum Bazz {
-    //         A(u8),
-    //     }
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: Bazz,
-    //     }
-    //
-    //     let foo = Foo { bazz: Bazz::A(42) };
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ").unwrap(), "A_42");
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_sequence(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: Vec<u8>,
-    //     }
-    //
-    //     let foo = Foo { bazz: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9] };
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ").unwrap(), "0 1 2 3 4 5 6 7 8 9");
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_sequence_sep(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: Vec<u8>,
-    //     }
-    //
-    //     let foo = Foo { bazz: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9] };
-    //     serializer = serializer.with_separator(",");
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ").unwrap(), "0,1,2,3,4,5,6,7,8,9");
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_sequence_empty(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: Vec<u8>,
-    //     }
-    //
-    //     let foo = Foo { bazz: vec![] };
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ").unwrap_err(), std::env::VarError::NotPresent);
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_tuple(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: (String, String),
-    //     }
-    //
-    //     let foo = Foo { bazz: ("Hello".to_string(), "World".to_string()) };
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ").unwrap(), "Hello World");
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_tuple_sep(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: (String, String),
-    //     }
-    //
-    //     let foo = Foo { bazz: ("Hello".to_string(), "World".to_string()) };
-    //     serializer = serializer.with_separator(",");
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ").unwrap(), "Hello,World");
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_tuple_unit(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: (),
-    //     }
-    //
-    //     let foo = Foo { bazz: () };
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ").unwrap_err(), std::env::VarError::NotPresent);
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_tuple_struct(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     struct Bazz(char, char, char);
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: Bazz,
-    //     }
-    //
-    //     let foo = Foo { bazz: Bazz('a', 'b', 'c') };
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ").unwrap(), "a b c");
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_tuple_struct_sep(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     struct Bazz(char, char, char);
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: Bazz,
-    //     }
-    //
-    //     let foo = Foo { bazz: Bazz('a', 'b', 'c') };
-    //     serializer = serializer.with_separator(",");
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ").unwrap(), "a,b,c");
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_tuple_variant(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     enum Bazz {
-    //         A(char, char, char),
-    //     }
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: Bazz,
-    //     }
-    //
-    //     let foo = Foo { bazz: Bazz::A('a', 'b', 'c') };
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ").unwrap(), "A_a_b_c");
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_map(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: std::collections::HashMap<String, String>,
-    //     }
-    //
-    //     let mut map = std::collections::HashMap::new();
-    //     map.insert("Hello".to_string(), "World".to_string());
-    //     map.insert("From".to_string(), "Trantorian".to_string());
-    //
-    //     let foo = Foo { bazz: map };
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ_HELLO").unwrap(), "World");
-    //     assert_eq!(std::env::var("BAZZ_FROM").unwrap(), "Trantorian");
-    // }
+    #[rstest::rstest]
+    fn serialize_unit_struct(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        struct Bazz;
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz };
+        let res = serializer.with_path(env.path()).serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ").unwrap(), "Bazz");
+    }
+
+    #[rstest::rstest]
+    fn serialize_unit_variant(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        enum Bazz {
+            A,
+        }
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz::A };
+        let res = serializer.with_path(env.path()).serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ").unwrap(), "A");
+    }
+
+    #[rstest::rstest]
+    fn serialize_newtype_struct(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        struct Bazz(u8);
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz(42) };
+        let res = serializer.with_path(env.path()).serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ").unwrap(), "42");
+    }
+
+    #[rstest::rstest]
+    fn serialize_newtype_variant(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        enum Bazz {
+            A(u8),
+        }
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz::A(42) };
+        let res = serializer.with_path(env.path()).serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ").unwrap(), "A_42");
+    }
+
+    #[rstest::rstest]
+    fn serialize_sequence(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Vec<u8>,
+        }
+
+        let foo = Foo { bazz: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9] };
+        let res = serializer.with_path(env.path()).serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ").unwrap(), "0 1 2 3 4 5 6 7 8 9");
+    }
+
+    #[rstest::rstest]
+    fn serialize_sequence_sep(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Vec<u8>,
+        }
+
+        let foo = Foo { bazz: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9] };
+        let res = serializer.with_path(env.path()).with_separator(",").serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ").unwrap(), "0,1,2,3,4,5,6,7,8,9");
+    }
+
+    #[rstest::rstest]
+    fn serialize_sequence_empty(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Vec<u8>,
+        }
+
+        let foo = Foo { bazz: vec![] };
+        let res = serializer.with_path(env.path()).serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ").unwrap_err(), std::env::VarError::NotPresent);
+    }
+
+    #[rstest::rstest]
+    fn serialize_tuple(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: (String, String),
+        }
+
+        let foo = Foo { bazz: ("Hello".to_string(), "World".to_string()) };
+        let res = serializer.with_path(env.path()).serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ").unwrap(), "Hello World");
+    }
+
+    #[rstest::rstest]
+    fn serialize_tuple_sep(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: (String, String),
+        }
+
+        let foo = Foo { bazz: ("Hello".to_string(), "World".to_string()) };
+        let res = serializer.with_path(env.path()).with_separator(",").serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ").unwrap(), "Hello,World");
+    }
+
+    #[rstest::rstest]
+    fn serialize_tuple_unit(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: (),
+        }
+
+        let foo = Foo { bazz: () };
+        let res = serializer.with_path(env.path()).serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ").unwrap_err(), std::env::VarError::NotPresent);
+    }
+
+    #[rstest::rstest]
+    fn serialize_tuple_struct(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        struct Bazz(char, char, char);
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz('a', 'b', 'c') };
+        let res = serializer.with_path(env.path()).serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ").unwrap(), "a b c");
+    }
+
+    #[rstest::rstest]
+    fn serialize_tuple_struct_sep(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        struct Bazz(char, char, char);
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz('a', 'b', 'c') };
+        let res = serializer.with_path(env.path()).with_separator(",").serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ").unwrap(), "a,b,c");
+    }
+
+    #[rstest::rstest]
+    fn serialize_tuple_variant(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        enum Bazz {
+            A(char, char, char),
+        }
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz::A('a', 'b', 'c') };
+        let res = serializer.with_path(env.path()).serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ").unwrap(), "A_a_b_c");
+    }
+
+    #[rstest::rstest]
+    fn serialize_map(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: std::collections::HashMap<String, String>,
+        }
+
+        let mut map = std::collections::HashMap::new();
+        map.insert("Hello".to_string(), "World".to_string());
+        map.insert("From".to_string(), "Trantorian".to_string());
+
+        let foo = Foo { bazz: map };
+        let res = serializer.with_path(env.path()).serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ_HELLO").unwrap(), "World");
+        assert_eq!(std::env::var("BAZZ_FROM").unwrap(), "Trantorian");
+    }
 
     #[rstest::rstest]
     fn serialize_struct(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
@@ -720,64 +731,67 @@ mod test {
             bazz: u8,
         }
 
-        let res = serializer.with_path(env.path()).serialize(&Foo { bazz: 42 });
+        let foo = Foo { bazz: 42 };
+        let res = serializer.with_path(env.path()).serialize(&foo);
         dotenvy::from_read(env).expect("Failed to load env");
 
         assert!(res.is_ok());
         assert_eq!(std::env::var("BAZZ").unwrap(), "42");
     }
 
-    // #[rstest::rstest]
-    // fn serialize_struct_nested(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: Bazz,
-    //     }
-    //
-    //     #[derive(serde::Serialize)]
-    //     struct Bazz {
-    //         val: u8,
-    //     }
-    //
-    //     let foo = Foo { bazz: Bazz { val: 42 } };
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ_VAL").unwrap(), "42");
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_struct_variant(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     enum Bazz {
-    //         ABC { a: char, b: char, c: char },
-    //     }
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: Bazz,
-    //     }
-    //
-    //     let foo = Foo { bazz: Bazz::ABC { a: 'a', b: 'b', c: 'c' } };
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("BAZZ_ABC_A").unwrap(), "a");
-    //     assert_eq!(std::env::var("BAZZ_ABC_B").unwrap(), "b");
-    //     assert_eq!(std::env::var("BAZZ_ABC_C").unwrap(), "c");
-    // }
-    //
-    // #[rstest::rstest]
-    // fn serialize_prefix(_logs: (), mut serializer: EnvSerializer) {
-    //     #[derive(serde::Serialize)]
-    //     struct Foo {
-    //         bazz: u8,
-    //     }
-    //
-    //     let foo = Foo { bazz: 42 };
-    //     serializer = serializer.with_prefix("foo");
-    //     let res = foo.serialize(&mut serializer).expect("Failed serialization");
-    //
-    //     assert_eq!(res, None);
-    //     assert_eq!(std::env::var("FOO_BAZZ").unwrap(), "42");
-    // }
+    #[rstest::rstest]
+    fn serialize_struct_nested(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        #[derive(serde::Serialize)]
+        struct Bazz {
+            val: u8,
+        }
+
+        let foo = Foo { bazz: Bazz { val: 42 } };
+        let res = serializer.with_path(env.path()).serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ_VAL").unwrap(), "42");
+    }
+
+    #[rstest::rstest]
+    fn serialize_struct_variant(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        enum Bazz {
+            ABC { a: char, b: char, c: char },
+        }
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: Bazz,
+        }
+
+        let foo = Foo { bazz: Bazz::ABC { a: 'a', b: 'b', c: 'c' } };
+        let res = serializer.with_path(env.path()).serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("BAZZ_ABC_A").unwrap(), "a");
+        assert_eq!(std::env::var("BAZZ_ABC_B").unwrap(), "b");
+        assert_eq!(std::env::var("BAZZ_ABC_C").unwrap(), "c");
+    }
+
+    #[rstest::rstest]
+    fn serialize_prefix(_logs: (), env: tempfile::NamedTempFile, serializer: EnvSerializerBuilder) {
+        #[derive(serde::Serialize)]
+        struct Foo {
+            bazz: u8,
+        }
+
+        let foo = Foo { bazz: 42 };
+        let res = serializer.with_path(env.path()).with_prefix("foo").serialize(&foo);
+        dotenvy::from_read(env).expect("Failed to load env");
+
+        assert!(res.is_ok());
+        assert_eq!(std::env::var("FOO_BAZZ").unwrap(), "42");
+    }
 }
