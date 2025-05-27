@@ -1,7 +1,7 @@
 mod common;
 
+use ::logs::fixtures::*;
 use common::*;
-use zero2prod::logs::fixtures::*;
 
 const HEADER: &str = "application/x-www-form-urlencoded";
 

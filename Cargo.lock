@@ -246,6 +246,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
 
 [[package]]
+name = "app"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "anyhow",
+ "app",
+ "config",
+ "futures",
+ "logs",
+ "reqwest",
+ "rstest",
+ "serde",
+ "serde_yaml",
+ "serializer",
+ "tempfile",
+ "testcontainers",
+ "testcontainers-modules",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "arraydeque"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1551,6 +1573,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
+name = "logs"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "rstest",
+ "testcontainers",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "lru-cache"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2481,6 +2514,20 @@ dependencies = [
  "ryu",
  "serde",
  "unsafe-libyaml",
+]
+
+[[package]]
+name = "serializer"
+version = "0.1.0"
+dependencies = [
+ "dotenvy",
+ "hex",
+ "logs",
+ "rstest",
+ "serde",
+ "tempfile",
+ "thiserror 2.0.12",
+ "tracing",
 ]
 
 [[package]]
@@ -3644,30 +3691,6 @@ dependencies = [
  "quote",
  "syn",
  "synstructure",
-]
-
-[[package]]
-name = "zero2prod"
-version = "0.1.0"
-dependencies = [
- "actix-web",
- "anyhow",
- "config",
- "dotenvy",
- "futures",
- "hex",
- "reqwest",
- "rstest",
- "serde",
- "serde_yaml",
- "tempfile",
- "testcontainers",
- "testcontainers-modules",
- "thiserror 2.0.12",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "zero2prod",
 ]
 
 [[package]]

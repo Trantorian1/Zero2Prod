@@ -6,7 +6,7 @@ compose.yaml
 Makefile
 tests
 target
-build.rs
+./app/build.rs
 
 # Git
 .github

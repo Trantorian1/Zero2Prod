@@ -1,4 +1,4 @@
-use zero2prod::configuration;
+use app::configuration;
 
 fn main() {
     let settings = configuration::Settings::new(None).expect("Failed to load configuration");

@@ -1,0 +1,20 @@
+[package]
+name = "logs"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = []
+fixtures = ["dep:rstest", "dep:testcontainers", "dep:futures"]
+
+[dependencies]
+# Logging
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Async
+futures = { workspace = true, optional = true }
+
+# Tests
+rstest = { workspace = true, optional = true }
+testcontainers = { workspace = true, optional = true }

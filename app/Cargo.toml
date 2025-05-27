@@ -1,0 +1,64 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/main.rs"
+name = "app"
+
+[[bin]]
+path = "src/health.rs"
+name = "health"
+
+[features]
+default = []
+fixtures = [
+  "dep:rstest",
+  "dep:tempfile",
+  "dep:serde_yaml",
+  "dep:futures",
+  "dep:testcontainers",
+]
+
+[dependencies]
+# web
+actix-web.workspace = true
+reqwest.workspace = true
+
+# Async
+tokio.workspace = true
+futures = { workspace = true, optional = true }
+
+# Error handling
+anyhow.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_yaml = { workspace = true, optional = true }
+
+# Logging
+logs.workspace = true
+tracing.workspace = true
+
+# Configuration
+config.workspace = true
+serializer.workspace = true
+
+# Integration tests
+rstest = { workspace = true, optional = true }
+tempfile = { workspace = true, optional = true }
+testcontainers = { workspace = true, optional = true }
+
+[dev-dependencies]
+# Crates
+app = { workspace = true, features = ["fixtures"] }
+logs = { workspace = true, features = ["fixtures"] }
+
+testcontainers.workspace = true
+testcontainers-modules.workspace = true
+rstest.workspace = true
+tempfile.workspace = true

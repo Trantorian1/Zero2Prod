@@ -1,0 +1,22 @@
+[package]
+name = "serializer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Error
+thiserror.workspace = true
+
+# Serialization
+serde.workspace = true
+hex.workspace = true
+
+[dev-dependencies]
+# Logging
+logs.workspace = true
+tracing.workspace = true
+rstest.workspace = true
+
+# Testing
+dotenvy.workspace = true
+tempfile.workspace = true

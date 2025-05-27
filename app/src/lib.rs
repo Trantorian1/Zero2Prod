@@ -1,6 +1,4 @@
 pub mod configuration;
-pub mod logs;
-pub mod serialize;
 
 mod routes;
 

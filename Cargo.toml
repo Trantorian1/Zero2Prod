@@ -1,34 +1,29 @@
-[package]
-name = "zero2prod"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = ["app", "serializer", "logs"]
+resolver = "3"
 
-[lib]
-path = "src/lib.rs"
+[workspace.dependencies]
+# Crates
+app.path = "app"
+logs.path = "logs"
+serializer.path = "serializer"
 
-[[bin]]
-path = "src/main.rs"
-name = "zero2prod"
-
-[[bin]]
-path = "src/health.rs"
-name = "health"
-
-[features]
-default = []
-fixtures = [
-  "dep:rstest",
-  "dep:tempfile",
-  "dep:serde_yaml",
-  "dep:futures",
-  "dep:testcontainers",
-]
-
-[dependencies]
+# Web
 actix-web = "4"
-serde = { version = "1.0.219", features = ["derive"] }
+reqwest = { version = "0.12.15", features = ["blocking"] }
+
+# Async
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+futures = "0.3.31"
+
+# Error handling
 anyhow = "1.0.98"
+thiserror = "2.0.12"
+
+# Serialization
+serde = { version = "1.0.219", features = ["derive"] }
+serde_yaml = "0.9.34"
+hex = "0.4.3"
 
 # Logging
 tracing = "0.1.41"
@@ -39,23 +34,7 @@ config = "0.15.11"
 dotenvy = "0.15.7"
 
 # Integration tests
-rstest = { version = "0.25.0", optional = true }
-tempfile = { version = "3.20.0", optional = true }
-serde_yaml = { version = "0.9.34", optional = true }
-futures = { version = "0.3.31", optional = true }
-testcontainers = { version = "0.24.0", features = [
-  "blocking",
-  "http_wait",
-], optional = true }
-thiserror = "2.0.12"
-hex = "0.4.3"
-reqwest = { version = "0.12.15", features = ["blocking"] }
-
-[dev-dependencies]
-zero2prod = { path = ".", features = ["fixtures"] }
-testcontainers = { version = "0.24.0", features = ["blocking", "http_wait"] }
 rstest = "0.25.0"
 tempfile = "3.20.0"
-serde_yaml = "0.9.34"
-futures = "0.3.31"
+testcontainers = { version = "0.24.0", features = ["blocking", "http_wait"] }
 testcontainers-modules = "0.12.0"

@@ -7,6 +7,7 @@ pub struct Settings {
 }
 
 #[derive(Eq, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct Routing {
     pub host: String,
     pub port: u16,
@@ -77,7 +78,7 @@ pub mod fixtures {
 
 #[cfg(test)]
 mod test {
-    use crate::logs::fixtures::*;
+    use ::logs::fixtures::*;
 
     use super::Settings;
     use super::fixtures::*;

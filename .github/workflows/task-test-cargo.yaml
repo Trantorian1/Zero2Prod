@@ -25,4 +25,4 @@ jobs:
       - uses: taiki-e/install-action@nextest
 
       - name: Cargo test
-        run: cargo nextest run
+        run: RUST_TEST=1 cargo nextest run

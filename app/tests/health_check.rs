@@ -2,7 +2,7 @@ mod common;
 
 use common::*;
 
-use zero2prod::logs::fixtures::*;
+use ::logs::fixtures::*;
 
 #[tokio::test]
 #[rstest::rstest]

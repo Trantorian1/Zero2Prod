@@ -1,8 +1,8 @@
 mod common;
 
+use ::app::configuration::fixtures::*;
+use ::logs::fixtures::*;
 use common::*;
-use zero2prod::configuration::fixtures::*;
-use zero2prod::logs::fixtures::*;
 
 #[tokio::test]
 #[rstest::rstest]

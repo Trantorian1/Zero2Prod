@@ -2,16 +2,6 @@ use std::io::Write;
 
 type SerOk = Option<(String, String)>;
 
-#[tracing::instrument(skip_all)]
-pub fn serialize_settings(settings: &crate::configuration::Settings) {
-    tracing::trace!("App settings: {settings:#?}");
-    EnvSerializerBuilder::new()
-        .with_prefix("Z2P")
-        .with_separator(" ")
-        .serialize(&settings)
-        .expect("Failed to export settings to env");
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EnvSerializerBuilder {
     path: std::path::PathBuf,
@@ -477,7 +467,7 @@ impl serde::ser::SerializeStructVariant for EnvSerializerStructVariant {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::logs::fixtures::*;
+    use ::logs::fixtures::*;
 
     #[rstest::fixture]
     fn env() -> tempfile::NamedTempFile {

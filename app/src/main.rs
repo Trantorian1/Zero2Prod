@@ -1,4 +1,4 @@
-use zero2prod::*;
+use app::*;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {

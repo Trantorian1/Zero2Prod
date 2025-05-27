@@ -4,7 +4,7 @@ git stash
 
 cargo clippy --tests -- -D warnings && \
 cargo fmt -- --check && \
-cargo nextest run && \
+RUST_TEST=1 cargo nextest run && \
 docker build -t zero2prod:push . && \
 docker image rm zero2prod:push
 
